@@ -1,4 +1,4 @@
-// Copyright 2019 The TCell Authors
+// Copyright 2022 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -34,13 +34,12 @@ var testTerminfo = &Terminfo{
 	SetBg:     "\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
 	AltChars:  "``aaffggiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~",
 	Mouse:     "\x1b[M",
-	MouseMode: "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;\x1b[?1000%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c",
 	SetCursor: "\x1b[%i%p1%d;%p2%dH",
 	PadChar:   "\x00",
+	EnterUrl:  "\x1b]8;%p2%s;%p1%s\x1b\\",
 }
 
 func TestTerminfoExpansion(t *testing.T) {
-
 	ti := testTerminfo
 
 	// Tests %i and basic parameter strings too
@@ -64,12 +63,56 @@ func TestTerminfoExpansion(t *testing.T) {
 		t.Error("SetFg(200) failed")
 	}
 
-	if ti.TParm(ti.MouseMode, 1) != "\x1b[?1000h\x1b[?1003h\x1b[?1006h" {
-		t.Error("Enable mouse mode failed")
+	type testCase struct {
+		expect string
+		format string
+		params []interface{}
 	}
-	if ti.TParm(ti.MouseMode, 0) != "\x1b[?1000l\x1b[?1003l\x1b[?1006l" {
-		t.Error("Disable mouse mode failed")
+
+	cases := []testCase{
+		{expect: "0a", format: "%p1%02x", params: []interface{}{10}},
+		{expect: "0A", format: "%p1%02X", params: []interface{}{10}},
+		{expect: "A", format: "%p1%c", params: []interface{}{65}},
+		{expect: "A", format: "%'A'%c", params: []interface{}{}},
+		{expect: "65", format: "%'A'%d", params: []interface{}{}},
+		{expect: "7", format: "%i%p1%p2%+%d", params: []interface{}{2, 3}},
+		{expect: "abc", format: "%p1%s", params: []interface{}{"abc"}},
+		{expect: "1%d", format: "1%%d", params: []interface{}{}},
+		{expect: "abc", format: "%p1%s%", params: []interface{}{"abc"}}, // unterminated %
+		{expect: "  abc", format: "%p1%5s", params: []interface{}{"abc"}},
+		{expect: "abc  ", format: "%p1%:-5s", params: []interface{}{"abc"}},
+		{expect: "15", format: "%{3}%p1%*%d", params: []interface{}{5}},
+		{expect: " A", format: "%p1%2c", params: []interface{}{65}},
+		{expect: "4", format: "%p1%l%d", params: []interface{}{"four"}},
+		{expect: "0", format: "%pA%d", params: []interface{}{}}, // missing/invalid parameter
+		{expect: "5", format: "%p1%p2%/%d", params: []interface{}{15, 3}},
+		{expect: "0", format: "%p1%p2%/%d", params: []interface{}{3, 15}},
+		{expect: "0", format: "%p1%p2%/%d", params: []interface{}{3, 0}},
+		{expect: "3", format: "%p1%p2%m%d", params: []interface{}{15, 4}},
+		{expect: "0", format: "%p1%p2%m%d", params: []interface{}{3, 0}},
+		{expect: "2", format: "%p1%Pa%{4}%{3}%ga%d", params: []interface{}{2}},
+		{expect: "2", format: "%p1%PA%{4}%{3}%gA%d", params: []interface{}{2}},
+		{expect: "0", format: "%p1%PA%{4}%{3}%ga%d", params: []interface{}{2}},
+		{expect: "0", format: "%p1%Pz%{4}%{3}%gZ%d", params: []interface{}{2}},
+		{expect: "0", format: "%d", params: []interface{}{}}, // underflow
+		{expect: "", format: "%s", params: []interface{}{}},  // underflow
+		{expect: "1", format: "%p1%p2%=%d", params: []interface{}{3, 3}},
+		{expect: "0", format: "%p1%p2%=%d", params: []interface{}{3, 4}},
+		{expect: "1", format: "%p1%p2%=%!%d", params: []interface{}{3, 4}},
+		{expect: "1", format: "%p1%p2%>%d", params: []interface{}{4, 3}},
+		{expect: "3", format: "%p1%p2%|%d", params: []interface{}{1, 2}},
+		{expect: "2", format: "%p1%p2%&%d", params: []interface{}{2, 3}},
+		{expect: "1", format: "%p1%p2%^%d", params: []interface{}{2, 3}},
+		{expect: "f", format: "%p1%~%{255}%&%x", params: []interface{}{0xf0}},
+		{expect: "%Z", format: "%Z", params: []interface{}{2, 3}}, // unknown sequence
 	}
+
+	for i := range cases {
+		if res := ti.TParm(cases[i].format, cases[i].params...); res != cases[i].expect {
+			t.Errorf("Format case %d failed: Format %q got %q", i, cases[i].format, res)
+		}
+	}
+	t.Logf("Tested %d cases", len(cases))
 }
 
 func TestTerminfoDelay(t *testing.T) {
@@ -78,7 +121,7 @@ func TestTerminfoDelay(t *testing.T) {
 	now := time.Now()
 	ti.TPuts(buf, ti.Blink)
 	then := time.Now()
-	s := buf.String()
+	s := string(buf.Bytes())
 	if s != "\x1b2mssomething" {
 		t.Errorf("Terminfo delay failed: %s", s)
 	}
@@ -87,6 +130,18 @@ func TestTerminfoDelay(t *testing.T) {
 	}
 	if then.Sub(now) > time.Millisecond*50 {
 		t.Error("Too late delay")
+	}
+}
+
+func TestStringParameter(t *testing.T) {
+	ti := testTerminfo
+	s := ti.TParm(ti.EnterUrl, "https://example.org/test")
+	if s != "\x1b]8;;https://example.org/test\x1b\\" {
+		t.Errorf("Result string failed: %s", s)
+	}
+	s = ti.TParm(ti.EnterUrl, "https://example.org/test", "id=1234")
+	if s != "\x1b]8;id=1234;https://example.org/test\x1b\\" {
+		t.Errorf("Result string failed: %s", s)
 	}
 }
 

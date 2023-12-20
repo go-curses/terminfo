@@ -28,6 +28,7 @@ import (
 	_ "github.com/go-curses/terminfo/c/cygwin"
 	_ "github.com/go-curses/terminfo/d/dtterm"
 	_ "github.com/go-curses/terminfo/e/emacs"
+	_ "github.com/go-curses/terminfo/f/foot"
 	_ "github.com/go-curses/terminfo/g/gnome"
 	_ "github.com/go-curses/terminfo/h/hpterm"
 	_ "github.com/go-curses/terminfo/k/konsole"

@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2020 The TCell Authors
@@ -238,6 +239,8 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 	t.SetCursor = tc.getstr("cup")
 	t.CursorBack1 = tc.getstr("cub1")
 	t.CursorUp1 = tc.getstr("cuu1")
+	t.InsertChar = tc.getstr("ich1")
+	t.AutoMargin = tc.getflag("am")
 	t.KeyF1 = tc.getstr("kf1")
 	t.KeyF2 = tc.getstr("kf2")
 	t.KeyF3 = tc.getstr("kf3")
@@ -382,26 +385,6 @@ func getinfo(name string) (*terminfo.Terminfo, string, error) {
 		t.SetFg = "\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"
 	}
 
-	// If the kmous entry is present, then we need to record the
-	// the codes to enter and exit mouse mode.  Sadly, this is not
-	// part of the terminfo databases anywhere that I've found, but
-	// is an extension.  The escape codes are documented in the XTerm
-	// manual, and all terminals that have kmous are expected to
-	// use these same codes, unless explicitly configured otherwise
-	// vi XM.  Note that in any event, we only known how to parse either
-	// x11 or SGR mouse events -- if your terminal doesn't support one
-	// of these two forms, you maybe out of luck.
-	t.MouseMode = tc.getstr("XM")
-	if t.Mouse != "" && t.MouseMode == "" {
-		// we anticipate that all xterm mouse tracking compatible
-		// terminals understand mouse tracking (1000), but we hope
-		// that those that don't understand any-event tracking (1003)
-		// will at least ignore it.  Likewise we hope that terminals
-		// that don't understand SGR reporting (1006) just ignore it.
-		t.MouseMode = "%?%p1%{1}%=%t%'h'%Pa%e%'l'%Pa%;" +
-			"\x1b[?1000%ga%c\x1b[?1002%ga%c\x1b[?1003%ga%c\x1b[?1006%ga%c"
-	}
-
 	// We only support colors in ANSI 8 or 256 color mode.
 	if t.Colors < 8 || t.SetFg == "" {
 		t.Colors = 0
@@ -523,7 +506,6 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "SetFgBgRGB", t.SetFgBgRGB)
 		dotGoAddStr(w, "StrikeThrough", t.StrikeThrough)
 		dotGoAddStr(w, "Mouse", t.Mouse)
-		dotGoAddStr(w, "MouseMode", t.MouseMode)
 		dotGoAddStr(w, "SetCursor", t.SetCursor)
 		dotGoAddStr(w, "CursorBack1", t.CursorBack1)
 		dotGoAddStr(w, "CursorUp1", t.CursorUp1)
@@ -626,6 +608,15 @@ func dotGoInfo(w io.Writer, terms []*TData) {
 		dotGoAddStr(w, "KeyCtrlEnd", t.KeyCtrlEnd)
 		dotGoAddInt(w, "Modifiers", t.Modifiers)
 		dotGoAddFlag(w, "TrueColor", t.TrueColor)
+		dotGoAddFlag(w, "AutoMargin", t.AutoMargin)
+		dotGoAddStr(w, "InsertChar", t.InsertChar)
+		dotGoAddStr(w, "CursorDefault", t.CursorDefault)
+		dotGoAddStr(w, "CursorBlinkingBlock", t.CursorBlinkingBlock)
+		dotGoAddStr(w, "CursorSteadyBlock", t.CursorSteadyBlock)
+		dotGoAddStr(w, "CursorBlinkingUnderline", t.CursorBlinkingUnderline)
+		dotGoAddStr(w, "CursorSteadyUnderline", t.CursorSteadyUnderline)
+		dotGoAddStr(w, "CursorBlinkingBar", t.CursorBlinkingBar)
+		dotGoAddStr(w, "CursorSteadyBar", t.CursorSteadyBar)
 		fmt.Fprintln(w, "\t})")
 	}
 	fmt.Fprintln(w, "}")

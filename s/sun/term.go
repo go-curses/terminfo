@@ -43,6 +43,8 @@ func init() {
 		KeyF10:       "\x1b[233z",
 		KeyF11:       "\x1b[234z",
 		KeyF12:       "\x1b[235z",
+		AutoMargin:   true,
+		InsertChar:   "\x1b[@",
 	})
 
 	// Sun Microsystems Workstation console with color support (IA systems)
@@ -50,15 +52,14 @@ func init() {
 		Name:         "sun-color",
 		Columns:      80,
 		Lines:        34,
-		Colors:       8,
+		Colors:       256,
 		Bell:         "\a",
 		Clear:        "\f",
 		AttrOff:      "\x1b[m",
 		Bold:         "\x1b[1m",
 		Reverse:      "\x1b[7m",
-		SetFg:        "\x1b[3%p1%dm",
-		SetBg:        "\x1b[4%p1%dm",
-		SetFgBg:      "\x1b[3%p1%d;4%p2%dm",
+		SetFg:        "\x1b[38;5;%p1%dm",
+		SetBg:        "\x1b[48;5;%p1%dm",
 		ResetFgBg:    "\x1b[0m",
 		PadChar:      "\x00",
 		SetCursor:    "\x1b[%i%p1%d;%p2%dH",
@@ -87,5 +88,7 @@ func init() {
 		KeyF10:       "\x1b[233z",
 		KeyF11:       "\x1b[234z",
 		KeyF12:       "\x1b[235z",
+		AutoMargin:   true,
+		InsertChar:   "\x1b[@",
 	})
 }
